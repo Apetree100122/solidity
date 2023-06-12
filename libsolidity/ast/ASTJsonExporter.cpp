@@ -561,7 +561,7 @@ bool ASTJsonExporter::visit(EventDefinition const& _node)
 		make_pair("parameters", toJson(_node.parameterList())),
 		make_pair("anonymous", _node.isAnonymous())
 	};
-	if (m_stackState >= CompilerStack::State::AnalysisPerformed)
+	if (m_stackState >= CompilerStack::State::AnalysisSuccessful)
 			_attributes.emplace_back(
 				make_pair(
 					"eventSelector",
@@ -580,7 +580,7 @@ bool ASTJsonExporter::visit(ErrorDefinition const& _node)
 		make_pair("documentation", _node.documentation() ? toJson(*_node.documentation()) : Json::nullValue),
 		make_pair("parameters", toJson(_node.parameterList()))
 	};
-	if (m_stackState >= CompilerStack::State::AnalysisPerformed)
+	if (m_stackState >= CompilerStack::State::AnalysisSuccessful)
 		_attributes.emplace_back(make_pair("errorSelector", _node.functionType(true)->externalIdentifierHex()));
 
 	setJsonNode(_node, "ErrorDefinition", std::move(_attributes));

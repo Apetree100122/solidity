@@ -805,7 +805,7 @@ void CommandLineInterface::compile()
 			formatter.printErrorInformation(*error);
 		}
 
-		if (!successful && !m_options.input.errorRecovery)
+		if (!successful)
 			solThrow(CommandLineExecutionError, "");
 	}
 	catch (CompilerError const& _exception)
@@ -844,6 +844,7 @@ void CommandLineInterface::handleCombinedJSON()
 
 	output[g_strVersion] = frontend::VersionString;
 	vector<string> contracts = m_compiler->contractNames();
+	bool compilationSuccess = m_compiler->state() >= CompilerStack::State::CompilationSuccessful;
 
 	if (!contracts.empty())
 		output[g_strContracts] = Json::Value(Json::objectValue);
@@ -854,35 +855,35 @@ void CommandLineInterface::handleCombinedJSON()
 			contractData[g_strAbi] = m_compiler->contractABI(contractName);
 		if (m_options.compiler.combinedJsonRequests->metadata)
 			contractData["metadata"] = m_compiler->metadata(contractName);
-		if (m_options.compiler.combinedJsonRequests->binary && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->binary && compilationSuccess)
 			contractData[g_strBinary] = m_compiler->object(contractName).toHex();
-		if (m_options.compiler.combinedJsonRequests->binaryRuntime && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->binaryRuntime && compilationSuccess)
 			contractData[g_strBinaryRuntime] = m_compiler->runtimeObject(contractName).toHex();
-		if (m_options.compiler.combinedJsonRequests->opcodes && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->opcodes && compilationSuccess)
 			contractData[g_strOpcodes] = evmasm::disassemble(m_compiler->object(contractName).bytecode, m_options.output.evmVersion);
-		if (m_options.compiler.combinedJsonRequests->asm_ && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->asm_ && compilationSuccess)
 			contractData[g_strAsm] = m_compiler->assemblyJSON(contractName);
-		if (m_options.compiler.combinedJsonRequests->storageLayout && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->storageLayout && compilationSuccess)
 			contractData[g_strStorageLayout] = m_compiler->storageLayout(contractName);
-		if (m_options.compiler.combinedJsonRequests->generatedSources && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->generatedSources && compilationSuccess)
 			contractData[g_strGeneratedSources] = m_compiler->generatedSources(contractName, false);
-		if (m_options.compiler.combinedJsonRequests->generatedSourcesRuntime && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->generatedSourcesRuntime && compilationSuccess)
 			contractData[g_strGeneratedSourcesRuntime] = m_compiler->generatedSources(contractName, true);
-		if (m_options.compiler.combinedJsonRequests->srcMap && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->srcMap && compilationSuccess)
 		{
 			auto map = m_compiler->sourceMapping(contractName);
 			contractData[g_strSrcMap] = map ? *map : "";
 		}
-		if (m_options.compiler.combinedJsonRequests->srcMapRuntime && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->srcMapRuntime && compilationSuccess)
 		{
 			auto map = m_compiler->runtimeSourceMapping(contractName);
 			contractData[g_strSrcMapRuntime] = map ? *map : "";
 		}
-		if (m_options.compiler.combinedJsonRequests->funDebug && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->funDebug && compilationSuccess)
 			contractData[g_strFunDebug] = StandardCompiler::formatFunctionDebugData(
 				m_compiler->object(contractName).functionDebugData
 			);
-		if (m_options.compiler.combinedJsonRequests->funDebugRuntime && m_compiler->compilationSuccessful())
+		if (m_options.compiler.combinedJsonRequests->funDebugRuntime && compilationSuccess)
 			contractData[g_strFunDebugRuntime] = StandardCompiler::formatFunctionDebugData(
 				m_compiler->runtimeObject(contractName).functionDebugData
 			);
@@ -1164,14 +1165,14 @@ void CommandLineInterface::outputCompilationResults()
 	// do we need AST output?
 	handleAst();
 
-	if (
-		!m_compiler->compilationSuccessful() &&
-		m_options.output.stopAfter == CompilerStack::State::CompilationSuccessful
-	)
-	{
-		serr() << endl << "Compilation halted after AST generation due to errors." << endl;
+	CompilerOutputs astOutputSelection;
+	astOutputSelection.astCompactJson = true;
+	if (m_options.compiler.outputs == CompilerOutputs() || m_options.compiler.outputs == astOutputSelection)
 		return;
-	}
+
+	// Currently AST is the only output allowed with --stop-after parsing. For all of the others
+	// we can safely assume that full compilation was performed and successful.
+	solAssert(m_options.output.stopAfter >= CompilerStack::State::CompilationSuccessful);
 
 	vector<string> contracts = m_compiler->contractNames();
 	for (string const& contract: contracts)

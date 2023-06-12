@@ -307,7 +307,6 @@ void CompilerStack::addSMTLib2Response(h256 const& _hash, string const& _respons
 void CompilerStack::reset(bool _keepSettings)
 {
 	m_stackState = Empty;
-	m_hasError = false;
 	m_sources.clear();
 	m_smtlib2Responses.clear();
 	m_unhandledSMTLib2Queries.clear();
@@ -403,16 +402,12 @@ bool CompilerStack::parse()
 		}
 	}
 
-	if (m_stopAfter <= Parsed)
-		m_stackState = Parsed;
-	else
-		m_stackState = ParsedAndImported;
 	if (Error::containsErrors(m_errorReporter.errors()))
-		m_hasError = true;
+		return false;
 
+	m_stackState = (m_stopAfter <= Parsed ? Parsed : ParsedAndImported);
 	storeContractDefinitions();
-
-	return !m_hasError;
+	return true;
 }
 
 void CompilerStack::importASTs(map<string, Json::Value> const& _sources)
@@ -441,7 +436,7 @@ void CompilerStack::importASTs(map<string, Json::Value> const& _sources)
 bool CompilerStack::analyze()
 {
 	if (m_stackState != ParsedAndImported)
-		solThrow(CompilerError, "Must call analyze only after parsing was performed.");
+		solThrow(CompilerError, "Must call analyze only after parsing was successful.");
 
 	if (!resolveImports())
 		return false;
@@ -628,11 +623,11 @@ bool CompilerStack::analyze()
 		noErrors = false;
 	}
 
-	m_stackState = AnalysisPerformed;
 	if (!noErrors)
-		m_hasError = true;
+		return false;
 
-	return !m_hasError;
+	m_stackState = AnalysisSuccessful;
+	return true;
 }
 
 bool CompilerStack::parseAndAnalyze(State _stopAfter)
@@ -642,7 +637,7 @@ bool CompilerStack::parseAndAnalyze(State _stopAfter)
 	bool success = parse();
 	if (m_stackState >= m_stopAfter)
 		return success;
-	if (success || m_parserErrorRecovery)
+	if (success)
 		success = analyze();
 	return success;
 }
@@ -675,15 +670,12 @@ bool CompilerStack::isRequestedContract(ContractDefinition const& _contract) con
 bool CompilerStack::compile(State _stopAfter)
 {
 	m_stopAfter = _stopAfter;
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		if (!parseAndAnalyze(_stopAfter))
 			return false;
 
 	if (m_stackState >= m_stopAfter)
 		return true;
-
-	if (m_hasError)
-		solThrow(CompilerError, "Called compile with errors.");
 
 	// Only compile contracts individually which have been requested.
 	map<ContractDefinition const*, shared_ptr<Compiler const>> otherCompilers;
@@ -763,7 +755,7 @@ vector<string> CompilerStack::contractNames() const
 
 string const CompilerStack::lastContractName(optional<string> const& _sourceName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Parsing was not successful.");
 	// try to find some user-supplied contract
 	string contractName;
@@ -866,7 +858,7 @@ string const* CompilerStack::runtimeSourceMapping(string const& _contractName) c
 
 string const CompilerStack::filesystemFriendlyName(string const& _contractName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "No compiled contracts found.");
 
 	// Look up the contract (by its fully-qualified name)
@@ -980,7 +972,7 @@ map<string, unsigned> CompilerStack::sourceIndices() const
 
 Json::Value const& CompilerStack::contractABI(string const& _contractName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	return contractABI(contract(_contractName));
@@ -988,7 +980,7 @@ Json::Value const& CompilerStack::contractABI(string const& _contractName) const
 
 Json::Value const& CompilerStack::contractABI(Contract const& _contract) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	solAssert(_contract.contract, "");
@@ -998,7 +990,7 @@ Json::Value const& CompilerStack::contractABI(Contract const& _contract) const
 
 Json::Value const& CompilerStack::storageLayout(string const& _contractName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	return storageLayout(contract(_contractName));
@@ -1006,7 +998,7 @@ Json::Value const& CompilerStack::storageLayout(string const& _contractName) con
 
 Json::Value const& CompilerStack::storageLayout(Contract const& _contract) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	solAssert(_contract.contract, "");
@@ -1016,7 +1008,7 @@ Json::Value const& CompilerStack::storageLayout(Contract const& _contract) const
 
 Json::Value const& CompilerStack::natspecUser(string const& _contractName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	return natspecUser(contract(_contractName));
@@ -1024,7 +1016,7 @@ Json::Value const& CompilerStack::natspecUser(string const& _contractName) const
 
 Json::Value const& CompilerStack::natspecUser(Contract const& _contract) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	solAssert(_contract.contract, "");
@@ -1034,7 +1026,7 @@ Json::Value const& CompilerStack::natspecUser(Contract const& _contract) const
 
 Json::Value const& CompilerStack::natspecDev(string const& _contractName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	return natspecDev(contract(_contractName));
@@ -1042,7 +1034,7 @@ Json::Value const& CompilerStack::natspecDev(string const& _contractName) const
 
 Json::Value const& CompilerStack::natspecDev(Contract const& _contract) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	solAssert(_contract.contract, "");
@@ -1052,7 +1044,7 @@ Json::Value const& CompilerStack::natspecDev(Contract const& _contract) const
 
 Json::Value CompilerStack::interfaceSymbols(string const& _contractName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	Json::Value interfaceSymbols(Json::objectValue);
@@ -1082,7 +1074,7 @@ Json::Value CompilerStack::interfaceSymbols(string const& _contractName) const
 
 bytes CompilerStack::cborMetadata(string const& _contractName, bool _forIR) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	return createCBORMetadata(contract(_contractName), _forIR);
@@ -1090,7 +1082,7 @@ bytes CompilerStack::cborMetadata(string const& _contractName, bool _forIR) cons
 
 string const& CompilerStack::metadata(Contract const& _contract) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	solAssert(_contract.contract, "");
@@ -1120,7 +1112,7 @@ SourceUnit const& CompilerStack::ast(string const& _sourceName) const
 
 ContractDefinition const& CompilerStack::contractDefinition(string const& _contractName) const
 {
-	if (m_stackState < AnalysisPerformed)
+	if (m_stackState < AnalysisSuccessful)
 		solThrow(CompilerError, "Analysis was not successful.");
 
 	return *contract(_contractName).contract;
@@ -1219,15 +1211,15 @@ bool CompilerStack::resolveImports()
 		if (sourcesSeen.count(_source))
 			return;
 		sourcesSeen.insert(_source);
-		if (_source->ast)
-			for (ASTPointer<ASTNode> const& node: _source->ast->nodes())
-				if (ImportDirective const* import = dynamic_cast<ImportDirective*>(node.get()))
-				{
-					string const& path = *import->annotation().absolutePath;
-					solAssert(m_sources.count(path), "");
-					import->annotation().sourceUnit = m_sources[path].ast.get();
-					toposort(&m_sources[path]);
-				}
+		solAssert(_source->ast);
+		for (ASTPointer<ASTNode> const& node: _source->ast->nodes())
+			if (ImportDirective const* import = dynamic_cast<ImportDirective*>(node.get()))
+			{
+				string const& path = *import->annotation().absolutePath;
+				solAssert(m_sources.count(path), "");
+				import->annotation().sourceUnit = m_sources[path].ast.get();
+				toposort(&m_sources[path]);
+			}
 		sourceOrder.push_back(_source);
 	};
 
@@ -1326,8 +1318,7 @@ void CompilerStack::assembleYul(
 	shared_ptr<evmasm::Assembly> _runtimeAssembly
 )
 {
-	solAssert(m_stackState >= AnalysisPerformed, "");
-	solAssert(!m_hasError, "");
+	solAssert(m_stackState >= AnalysisSuccessful, "");
 
 	Contract& compiledContract = m_contracts.at(_contract.fullyQualifiedName());
 
@@ -1400,9 +1391,7 @@ void CompilerStack::compileContract(
 {
 	solAssert(!m_viaIR, "");
 	solUnimplementedAssert(!m_eofVersion.has_value(), "Experimental EOF support is only available for via-IR compilation.");
-	solAssert(m_stackState >= AnalysisPerformed, "");
-	if (m_hasError)
-		solThrow(CompilerError, "Called compile with errors.");
+	solAssert(m_stackState >= AnalysisSuccessful, "");
 
 	if (_otherCompilers.count(&_contract))
 		return;
@@ -1438,9 +1427,7 @@ void CompilerStack::compileContract(
 
 void CompilerStack::generateIR(ContractDefinition const& _contract)
 {
-	solAssert(m_stackState >= AnalysisPerformed, "");
-	if (m_hasError)
-		solThrow(CompilerError, "Called generateIR with errors.");
+	solAssert(m_stackState >= AnalysisSuccessful, "");
 
 	Contract& compiledContract = m_contracts.at(_contract.fullyQualifiedName());
 	if (!compiledContract.yulIR.empty())
@@ -1505,9 +1492,7 @@ void CompilerStack::generateIR(ContractDefinition const& _contract)
 
 void CompilerStack::generateEVMFromIR(ContractDefinition const& _contract)
 {
-	solAssert(m_stackState >= AnalysisPerformed, "");
-	if (m_hasError)
-		solThrow(CompilerError, "Called generateEVMFromIR with errors.");
+	solAssert(m_stackState >= AnalysisSuccessful, "");
 
 	if (!_contract.canBeDeployed())
 		return;
@@ -1538,7 +1523,7 @@ void CompilerStack::generateEVMFromIR(ContractDefinition const& _contract)
 
 CompilerStack::Contract const& CompilerStack::contract(string const& _contractName) const
 {
-	solAssert(m_stackState >= AnalysisPerformed, "");
+	solAssert(m_stackState >= AnalysisSuccessful, "");
 
 	auto it = m_contracts.find(_contractName);
 	if (it != m_contracts.end())
