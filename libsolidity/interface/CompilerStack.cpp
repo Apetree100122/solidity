@@ -440,7 +440,7 @@ void CompilerStack::importASTs(map<string, Json::Value> const& _sources)
 
 bool CompilerStack::analyze()
 {
-	if (m_stackState != ParsedAndImported || m_stackState >= AnalysisPerformed)
+	if (m_stackState != ParsedAndImported)
 		solThrow(CompilerError, "Must call analyze only after parsing was performed.");
 
 	if (!resolveImports())
