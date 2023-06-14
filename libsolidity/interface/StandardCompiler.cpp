@@ -1328,8 +1328,8 @@ Json::Value StandardCompiler::compileSolidity(StandardCompiler::InputsAndSetting
 
 	/// Inconsistent state - stop here to receive error reports from users
 	if (
-		(compilationFailed || !analysisSuccess) &&
-		(errors.empty() && _inputsAndSettings.stopAfter >= CompilerStack::State::AnalysisSuccessful)
+		(compilationFailed || analysisFailed || !parsingSuccess) &&
+		errors.empty()
 	)
 		return formatFatalError(Error::Type::InternalCompilerError, "No error reported, but compilation failed.");
 
