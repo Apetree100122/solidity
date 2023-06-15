@@ -1170,55 +1170,54 @@ void CommandLineInterface::outputCompilationResults()
 
 	CompilerOutputs astOutputSelection;
 	astOutputSelection.astCompactJson = true;
-	if (m_options.compiler.outputs == CompilerOutputs() || m_options.compiler.outputs == astOutputSelection)
-		return;
-
-	// Currently AST is the only output allowed with --stop-after parsing. For all of the others
-	// we can safely assume that full compilation was performed and successful.
-	solAssert(m_options.output.stopAfter >= CompilerStack::State::CompilationSuccessful);
-
-	vector<string> contracts = m_compiler->contractNames();
-	for (string const& contract: contracts)
+	if (m_options.compiler.outputs != CompilerOutputs() && m_options.compiler.outputs != astOutputSelection)
 	{
-		if (needsHumanTargetedStdout(m_options))
-			sout() << endl << "======= " << contract << " =======" << endl;
+		// Currently AST is the only output allowed with --stop-after parsing. For all of the others
+		// we can safely assume that full compilation was performed and successful.
+		solAssert(m_options.output.stopAfter >= CompilerStack::State::CompilationSuccessful);
 
-		// do we need EVM assembly?
-		if (m_options.compiler.outputs.asm_ || m_options.compiler.outputs.asmJson)
+		for (string const& contract: m_compiler->contractNames())
 		{
-			string ret;
-			if (m_options.compiler.outputs.asmJson)
-				ret = util::jsonPrint(removeNullMembers(m_compiler->assemblyJSON(contract)), m_options.formatting.json);
-			else
-				ret = m_compiler->assemblyString(contract, m_fileReader.sourceUnits());
+			if (needsHumanTargetedStdout(m_options))
+				sout() << endl << "======= " << contract << " =======" << endl;
 
-			if (!m_options.output.dir.empty())
-				createFile(m_compiler->filesystemFriendlyName(contract) + (m_options.compiler.outputs.asmJson ? "_evm.json" : ".evm"), ret);
-			else
-				sout() << "EVM assembly:" << endl << ret << endl;
-		}
+			// do we need EVM assembly?
+			if (m_options.compiler.outputs.asm_ || m_options.compiler.outputs.asmJson)
+			{
+				string ret;
+				if (m_options.compiler.outputs.asmJson)
+					ret = util::jsonPrint(removeNullMembers(m_compiler->assemblyJSON(contract)), m_options.formatting.json);
+				else
+					ret = m_compiler->assemblyString(contract, m_fileReader.sourceUnits());
 
-		if (m_options.compiler.estimateGas)
-			handleGasEstimation(contract);
+				if (!m_options.output.dir.empty())
+					createFile(m_compiler->filesystemFriendlyName(contract) + (m_options.compiler.outputs.asmJson ? "_evm.json" : ".evm"), ret);
+				else
+					sout() << "EVM assembly:" << endl << ret << endl;
+			}
 
-		handleBytecode(contract);
-		handleIR(contract);
-		handleIRAst(contract);
-		handleIROptimized(contract);
-		handleIROptimizedAst(contract);
-		handleSignatureHashes(contract);
-		handleMetadata(contract);
-		handleABI(contract);
-		handleStorageLayout(contract);
-		handleNatspec(true, contract);
-		handleNatspec(false, contract);
-	} // end of contracts iteration
+			if (m_options.compiler.estimateGas)
+				handleGasEstimation(contract);
+
+			handleBytecode(contract);
+			handleIR(contract);
+			handleIRAst(contract);
+			handleIROptimized(contract);
+			handleIROptimizedAst(contract);
+			handleSignatureHashes(contract);
+			handleMetadata(contract);
+			handleABI(contract);
+			handleStorageLayout(contract);
+			handleNatspec(true, contract);
+			handleNatspec(false, contract);
+		} // end of contracts iteration
+	}
 
 	if (!m_hasOutput)
 	{
 		if (!m_options.output.dir.empty())
 			sout() << "Compiler run successful. Artifact(s) can be found in directory " << m_options.output.dir << "." << endl;
-		else if (contracts.empty())
+		else if (m_compiler->contractNames().empty())
 			sout() << "Compiler run successful. No contracts to compile." << endl;
 		else
 			sout() << "Compiler run successful. No output generated." << endl;
