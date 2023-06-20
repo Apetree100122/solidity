@@ -28,19 +28,10 @@ namespace solidity::frontend
 class SMTSolverCommand
 {
 public:
-	SMTSolverCommand(std::string _solverCmd);
+	SMTSolverCommand() = default;
 
 	/// Calls an SMT solver with the given query.
 	frontend::ReadCallback::Result solve(std::string const& _kind, std::string const& _query);
-
-	frontend::ReadCallback::Callback solver()
-	{
-		return [this](std::string const& _kind, std::string const& _query) { return solve(_kind, _query); };
-	}
-
-private:
-	/// The name of the solver's binary.
-	std::string const m_solverCmd;
 };
 
 }

@@ -166,12 +166,8 @@ SMTSolverChoice ModelChecker::availableSolvers()
 	smtutil::SMTSolverChoice available = smtutil::SMTSolverChoice::SMTLIB2();
 #if defined(__linux) || defined(__APPLE__)
 	available.eld = !boost::process::search_path("eld").empty();
-#endif
-#ifdef HAVE_Z3
-	available.z3 = solidity::smtutil::Z3Interface::available();
-#endif
-#ifdef HAVE_CVC4
-	available.cvc4 = true;
+	available.z3 = !boost::process::search_path("z3").empty();
+	available.cvc4 = !boost::process::search_path("cvc4").empty();
 #endif
 	return available;
 }
@@ -211,9 +207,6 @@ SMTSolverChoice ModelChecker::checkRequestedSolvers(SMTSolverChoice _enabled, Er
 			8158_error,
 			SourceLocation(),
 			"Solver z3 was selected for SMTChecker but it is not available."
-#ifdef HAVE_Z3_DLOPEN
-			" libz3.so." + to_string(Z3_MAJOR_VERSION) + "." + to_string(Z3_MINOR_VERSION) + " was not found."
-#endif
 		);
 	}
 
