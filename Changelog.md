@@ -1,5 +1,9 @@
 ### 0.8.21 (unreleased)
 
+Important Bugfixes:
+ * Code generation: Always generate code for the expression in ``expression.selector``.
+
+
 Language Features:
  * Allow qualified access to events from other contracts.
 
