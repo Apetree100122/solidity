@@ -24,6 +24,7 @@ Bugfixes:
  * SMTChecker: Fix false negative when a verification target can be violated only by trusted external call from another public function.
  * SMTChecker: Fix internal error caused by using external identifier to encode member access to functions that take an internal function as a parameter.
  * Standard JSON Interface: Fix an incomplete AST being returned when analysis is interrupted by certain kinds of fatal errors.
+ * TypeChecker: Function types other than ``internal`` and ``external`` cannot be used anymore in complex expressions.
  * Yul Optimizer: Ensure that the assignment of memory slots for variables moved to memory does not depend on AST IDs that may depend on whether additional files are included during compilation.
  * Yul Optimizer: Fix optimized IR being unnecessarily passed through the Yul optimizer again before bytecode generation.
 
