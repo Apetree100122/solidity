@@ -170,6 +170,7 @@ pair<CheckResult, vector<string>> SMTLib2Interface::check(vector<Expression> con
 
 	CheckResult lastResult = CheckResult::ERROR;
 	vector<string> finalValues;
+	smtAssert(m_smtCallback);
 	for (auto const& s: solverCommands)
 	{
 		auto callBackResult = m_smtCallback(ReadCallback::kindString(ReadCallback::Kind::SMTQuery) + ' ' + s, query);
@@ -182,7 +183,8 @@ pair<CheckResult, vector<string>> SMTLib2Interface::check(vector<Expression> con
 			if (!solverAnswered(lastResult))
 			{
 				lastResult = result;
-				finalValues = parseValues(response);
+				if (result == CheckResult::SATISFIABLE)
+					finalValues = parseValues(response);
 			}
 			else if (lastResult != result)
 			{
