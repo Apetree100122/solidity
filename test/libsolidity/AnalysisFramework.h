@@ -24,6 +24,9 @@
 #include <test/libsolidity/ErrorCheck.h>
 
 #include <libsolidity/interface/CompilerStack.h>
+#include "libsolidity/interface/UniversalCallback.h"
+#include "libsolidity/interface/FileReader.h"
+#include "libsolidity/interface/SMTSolverCommand.h"
 
 #include <functional>
 #include <string>
@@ -76,7 +79,7 @@ protected:
 	solidity::frontend::CompilerStack& compiler()
 	{
 		if (!m_compiler)
-			m_compiler = std::make_unique<solidity::frontend::CompilerStack>();
+			m_compiler = std::make_unique<solidity::frontend::CompilerStack>(callback.callback());
 		return *m_compiler;
 	}
 
@@ -84,11 +87,14 @@ protected:
 	solidity::frontend::CompilerStack const& compiler() const
 	{
 		if (!m_compiler)
-			m_compiler = std::make_unique<solidity::frontend::CompilerStack>();
+			m_compiler = std::make_unique<solidity::frontend::CompilerStack>(callback.callback());
 		return *m_compiler;
 	}
 
 private:
+	FileReader fileReader;
+	SMTSolverCommand smtCommand;
+	UniversalCallback callback{fileReader, smtCommand};
 	mutable std::unique_ptr<solidity::frontend::CompilerStack> m_compiler;
 };
 

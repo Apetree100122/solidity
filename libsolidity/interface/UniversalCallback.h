@@ -34,7 +34,7 @@ public:
 		m_solver{_solver}
 	{}
 
-	frontend::ReadCallback::Callback callback()
+	frontend::ReadCallback::Callback callback() const
 	{
 		return [this](std::string const& _kind, std::string const& _data) -> ReadCallback::Result {
 			if (_kind == ReadCallback::kindString(ReadCallback::Kind::ReadFile))
