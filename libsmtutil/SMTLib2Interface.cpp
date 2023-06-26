@@ -42,11 +42,15 @@ using namespace solidity::smtutil;
 SMTLib2Interface::SMTLib2Interface(
 	map<h256, string> _queryResponses,
 	ReadCallback::Callback _smtCallback,
-	optional<unsigned> _queryTimeout
+	SMTSolverChoice _enabledSolvers,
+	optional<unsigned> _queryTimeout,
+	bool _dumpQuery
 ):
 	SolverInterface(_queryTimeout),
 	m_queryResponses(std::move(_queryResponses)),
-	m_smtCallback(std::move(_smtCallback))
+	m_smtCallback(std::move(_smtCallback)),
+	m_enabledSolvers(_enabledSolvers),
+	m_dumpQuery(_dumpQuery)
 {
 	reset();
 }
