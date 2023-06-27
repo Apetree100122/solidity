@@ -190,7 +190,7 @@ string CHCSmtLib2Interface::querySolver(string const& _input)
 		if (m_enabledSolvers.eld)
 			return "eld";
 		if (m_enabledSolvers.z3)
-			return "z3";
+			return "z3 rlimit=1000000";
 		return "";
 	}();
 	auto result = m_smtCallback(ReadCallback::kindString(ReadCallback::Kind::SMTQuery) + " " + solverBinary, _input);
