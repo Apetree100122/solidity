@@ -116,7 +116,7 @@ BOOST_AUTO_TEST_CASE(string_storage)
 				CHECK_DEPLOY_GAS(0, 97697, evmVersion);
 			// Shanghai is cheaper due to `push0`
 			else
-				CHECK_DEPLOY_GAS(0, 97071, evmVersion);
+				CHECK_DEPLOY_GAS(0, 97719, evmVersion);
 		}
 		else
 		{

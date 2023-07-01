@@ -1878,8 +1878,9 @@ BOOST_AUTO_TEST_CASE(inliner_revert_increased_datagas)
 {
 	// Inlining this would increase data gas (5 bytes v/s 4 bytes), therefore, skipped.
 	AssemblyItems items{
-		AssemblyItem(PushTag, 1),
-		Instruction::JUMP,
+		u256(0),
+		u256(0),
+		Instruction::REVERT,
 		AssemblyItem(Tag, 1),
 		u256(0),
 		u256(0),

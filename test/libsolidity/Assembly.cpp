@@ -175,7 +175,7 @@ BOOST_AUTO_TEST_CASE(location_test)
 	vector<SourceLocation> locations;
 	if (solidity::test::CommonOptions::get().optimize)
 		locations =
-			vector<SourceLocation>(31, SourceLocation{23, 103, sourceName}) +
+			vector<SourceLocation>(34, SourceLocation{23, 103, sourceName}) +
 			vector<SourceLocation>(1, SourceLocation{41, 100, sourceName}) +
 			vector<SourceLocation>(1, SourceLocation{93, 95, sourceName}) +
 			vector<SourceLocation>(15, SourceLocation{41, 100, sourceName});
