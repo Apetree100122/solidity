@@ -1,5 +1,9 @@
 ### 0.8.21 (unreleased)
 
+Important Bugfixes:
+ * Yul Optimizer: Fix ``FullInliner`` step (``i``) not preserving the evaluation order of arguments passed into inlined functions in code that is not in expression-split form (i.e. when using a custom optimizer sequence in which the step not preceded by ``ExpressionSplitter`` (``x``)).
+
+
 Language Features:
  * Allow qualified access to events from other contracts.
 
