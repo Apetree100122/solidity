@@ -1,7 +1,7 @@
 ### 0.8.21 (unreleased)
 
 Important Bugfixes:
- * Code generation: Always generate code for the expression in ``expression.selector``.
+ * Code generation: Always generate code for the expression in ``<expression>.selector`` in the legacy code generation pipeline.
 
 
 Language Features:
