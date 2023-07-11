@@ -1,5 +1,9 @@
 ### 0.8.21 (unreleased)
 
+Important Bugfixes:
+ * Code Generator: Disallow complex expressions whose results are types, built-ins, modules or some unassignable functions. The legacy code generation pipeline would not actually evaluate them, discarding any side-effects they might have.
+
+
 Language Features:
  * Allow qualified access to events from other contracts.
 
