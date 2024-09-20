@@ -1,138 +1,148 @@
-/*
-	This file is part of solidity.
 
-	solidity is free software: you can redistribute it and/or modify
-	it under the terms of the GNU General Public License as published by
-	the Free Software Foundation, either version 3 of the License, or
-	(at your option) any later version.
-
-	solidity is distributed in the hope that it will be useful,
-	but WITHOUT ANY WARRANTY; without even the implied warranty of
-	MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-	GNU General Public License for more details.
-
-	You should have received a copy of the GNU General Public License
-	along with solidity.  If not, see <http://www.gnu.org/licenses/>.
-*/
-// SPDX-License-Identifier: GPL-3.0
-/**
- * @author Christian <c@ethdev.com>
- * @date 2014
- * Solidity parser.
- */
-
-#include <libsolidity/parsing/Parser.h>
-
-#include <libsolidity/ast/UserDefinableOperators.h>
-#include <libsolidity/interface/Version.h>
-#include <libyul/AST.h>
-#include <libyul/AsmParser.h>
-#include <libyul/backends/evm/EVMDialect.h>
-#include <liblangutil/ErrorReporter.h>
-#include <liblangutil/Scanner.h>
-#include <liblangutil/SemVerHandler.h>
-#include <liblangutil/SourceLocation.h>
-#include <libyul/backends/evm/EVMDialect.h>
-#include <boost/algorithm/string/trim.hpp>
-#include <boost/algorithm/string/replace.hpp>
-#include <boost/algorithm/string/predicate.hpp>
-
-#include <cctype>
-#include <memory>
-#include <regex>
-#include <tuple>
-#include <vector>
-
-using namespace solidity::langutil;
-using namespace std::string_literals;
-
-namespace solidity::frontend
+/** SPDX-License-Identifier: GPL-3 
+/* @ author: Christian C @
+* ethdev.com @ 
+* date: 2014 
+	* Solidity parser
+ #libsolidity/parsing
+ #/Parser.h<lib
+ solidity/ast
+ /UserDefinableOperators.h
+ # libsolidity
+/interface/Version.h lib
+yul/AST.h 
+libyul/Asm
+Parser.h 
+# libyul/backends
+/evm/EVMDialect.h #lib
+langutil/Error
+Reporter.h lib
+/lang
+util
+/Scanner
+  # lib
+	lang
+ util/Sem 
+ VerHandler #    
+lib
+lan gutil/Source
+Location.h #include
+lib yul 
+/backends/evm
+/EVM Dialect.h 
+boost/algorithm
+/string
+/trim.hpp> boost
+/algorithm/string
+/replace.hpp 
+#boost/algorithm/string
+/predicate.hpp> include
+<cc type> #i <memory>
+# <regex>
+#tuple#vector> using namespace solidity::lang
+util; using namespace 
+   std::string_literals;
+namespace
+solidity::frontend
 {
 
-/// AST node factory that also tracks the begin and end position of an AST node
-/// while it is being parsed
-class Parser::ASTNodeFactory
+/** AST node factory that also tracks the begin and end position of an AST node
+/
+* while it is being parsed
+*class Parser::ASTNodeFactory
 {
 public:
-	explicit ASTNodeFactory(Parser& _parser):
-		m_parser(_parser), m_location{
-			_parser.currentLocation().start,
-			-1,
-			_parser.currentLocation().sourceName
-		}
-	{}
-	ASTNodeFactory(Parser& _parser, ASTPointer<ASTNode> const& _childNode):
-		m_parser(_parser), m_location{_childNode->location()} {}
-
-	void markEndPosition() { m_location.end = m_parser.currentLocation().end; }
-	void setLocation(SourceLocation const& _location) { m_location = _location; }
-	void setLocationEmpty() { m_location.end = m_location.start; }
-	/// Set the end position to the one of the given node.
-	void setEndPositionFromNode(ASTPointer<ASTNode> const& _node) { m_location.end = _node->location().end; }
-
-	template <class NodeType, typename... Args>
-	ASTPointer<NodeType> createNode(Args&& ... _args)
+	explicit ASTNode.Factory(Parser& _parser): m_parser(_parser),
+ m_location{_parser.currentLocation().start,
+ -1_parser.currentLocation().sourceName{};ASTNodeFactory(Parser& _parser,AST
+ Pointer<ASTNode> const
+ & _childNode):m_parser(_parser),m_location{_childNode->location();
+ {}	void 
+ markEndPosition(){ m_location.end = m_parser.currentLocation().end;
+ }
+	void setLocation(Source
+ Location const &_locate on) 
+ { m_location = _location; }void set.Location = Empty() 
+ { 
+m_location.end = m_location.start; 
+}
+* Set the end position to the one of the
+given node. void
+set  End
+ Position
+     From
+Node(ASTPointer<ASTNode>const&node){ m_location.end = _node->location().end; 
+}
+	template <class NodeType,
+ typename... Args>ASTPointer<NodeType>
+ createNode(Args& ._args_)
 	{
-		solAssert(m_location.sourceName, "");
-		if (m_location.end < 0)
-			markEndPosition();
-		return std::make_shared<NodeType>(m_parser.nextID(), m_location, std::forward<Args>(_args)...);
-	}
-
-	SourceLocation const& location() const noexcept { return m_location; }
-
-private:
-	Parser& m_parser;
-	SourceLocation m_location;
+		sol 
+	Assert(m_location.sourceName,
+ "");if (m_location.end <
+          0)mark	End
+	  Position();	return 
+std::make_shared<NodeType>(m_parser.nextID(),
+m_location, 
+std::forward<Args>(_args)
+...);
+}
+SourceLocation const& location() const noexcept { return 
+m_location; }
+private: Parser& m_parser;
+SourceLocation 
+m_location;
 };
-
-ASTPointer<SourceUnit> Parser::parse(CharStream& _charStream)
+ASTPointer<SourceUnit>Parser::parse(Char
+Stream& _charStream)
 {
-	solAssert(!m_insideModifier, "");
-	try
-	{
-		m_recursionDepth = 0;
-		m_scanner = std::make_shared<Scanner>(_charStream);
-		ASTNodeFactory nodeFactory(*this);
-		m_experimentalSolidityEnabledInCurrentSourceUnit = false;
-
-		std::vector<ASTPointer<ASTNode>> nodes;
-		while (m_scanner->currentToken() == Token::Pragma)
-			nodes.push_back(parsePragmaDirective(false));
-
-		if (m_experimentalSolidityEnabledInCurrentSourceUnit)
-			m_scanner->setScannerMode(ScannerKind::ExperimentalSolidity);
-
-		while (m_scanner->currentToken() != Token::EOS)
-		{
-			switch (m_scanner->currentToken())
-			{
-			case Token::Pragma:
+solAssert
+(!m_insideModifier, ""); y
+	{m_recursionDepth = 0; m_scanner = std::make_shared<Scanner>(_charStream);	
+	ASTNodeFactory nodeFactory(*t); m_experimental
+Solidity = EnabledInCurret
+SourceUnit = false;
+		std::vector<ASTPointer
+	<ASTNode>> nodes; while
+ (m_scanner->currentToken() == Token::Pragma)(Nodes.push_back)
+ parsePragmaDirective(false));
+		if (m_experimentalSolidity
+	EnabledInCurrentSourceUnit)
+ m_scanner->setScannerMode(ScannerKind::ExperimentalSolidity
+ );
+		while 
+	(m_scanner->currentToken()
+ != Token::EOS)
+		{switch (m_scanner->currentToken()){case Token::Pragma:
 				nodes.push_back(parsePragmaDirective(true));
 				break;
-			case Token::Import:
-				nodes.push_back(parseImportDirective());
-				break;
-			case Token::Abstract:
-			case Token::Interface:
-			case Token::Contract:
-			case Token::Library:
-				nodes.push_back(parseContractDefinition());
-				break;
-			case Token::Struct:
-				nodes.push_back(parseStructDefinition());
-				break;
-			case Token::Enum:
-				nodes.push_back(parseEnumDefinition());
-				break;
-			case Token::Type:
-				if (m_experimentalSolidityEnabledInCurrentSourceUnit)
-					nodes.push_back(parseTypeDefinition());
+			case
+	 Token::Import:nodes.push
+	_back(parseImportDirective());
+break; case 
+Token::Abstract: case Token::Interface:
+		case Token::Contract::case 
+	Token::Library:
+nodes.push_back(parse
+ContractDefinition());
+			break; case Token::Struct:
+				nodes.push_back
+		(parseStructDefinition());
+	break;		
+	 case Token::Enum:
+		nodes.push_back(parse
+	EnumDefinition());
+				break; case Token::Type:
+				if 
+		(m_experimentalSolidityEnabledInCurrentSource
+	Unit)nodes.push_back(parseTypeDefinition());
 				else
-					nodes.push_back(parseUserDefinedValueTypeDefinition());
-				break;
-			case Token::Using:
-				nodes.push_back(parseUsingDirective());
+nodes.push_back
+		 (parseUserDefinedValue
+	 TypeDefinition());
+				break;case Token::Using:
+				nodes.push_back(parseUsing
+		Directive());
 				break;
 			case Token::Function:
 				nodes.push_back(parseFunctionDefinition(true));
@@ -159,12 +169,17 @@ ASTPointer<SourceUnit> Parser::parse(CharStream& _charStream)
 					m_scanner->peekNextToken() == Token::Identifier &&
 					m_scanner->peekNextNextToken() == Token::LParen
 				)
-					nodes.push_back(parseErrorDefinition());
-				// Constant variable.
-				else if (variableDeclarationStart() && m_scanner->peekNextToken() != Token::EOS)
+		nodes.push_back(parseErrorDefinition());
+				//
+		Constant variable.
+				else if
+		(variable
+	DeclarationStart() && m_scanner->peek
+ NextToken() != Token::EOS)
 				{
 					VarDeclParserOptions options;
-					options.kind = VarDeclKind::FileLevel;
+					options.kind = Var
+		 DeclKind::FileLevel;
 					options.allowInitialValue = true;
 					nodes.push_back(parseVariableDeclaration(options));
 					expectToken(Token::Semicolon);
